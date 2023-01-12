@@ -1,0 +1,29 @@
+name: 'bump-k8s-image-tags'
+description: 'Updates container image tag in a k8s manifest repository and creates a pull request'
+author: 'Raphael Papazikas'
+branding:
+  color: blue
+  icon: anchor
+inputs:
+  owner:
+    required: true
+    description: "The owner of the repository, can be either a username or an organization name"
+  repo:
+    required: true
+    description: "he repository "
+  image:
+    required: true
+    description: "Regex that matches the image to update"
+  tag:
+    required: true
+    description: "To which tag should be updated"
+  PAT:
+    required: true
+    description: "A personal access token that has read-write access to this repository"
+  base:
+    required: false
+    description: "The base branch"
+    default: "main"
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
