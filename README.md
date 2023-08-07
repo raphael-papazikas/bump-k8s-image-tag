@@ -18,7 +18,7 @@ Updates container image tag in a k8s manifest repository and creates a pull requ
 
 ```yaml
 - name: Bump image tag
-  uses: raphael-papazikas/bump-k8s-image-tag
+  uses: raphael-papazikas/bump-k8s-image-tag@1.0.0
   with:
     owner: raphael-papazikas
     repo: k8s-deployment
