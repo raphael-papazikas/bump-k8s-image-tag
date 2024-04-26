@@ -24,6 +24,8 @@ inputs:
     required: false
     description: "The base branch"
     default: "main"
+  auto_merge:
+    description: "Whether the pull request should be automatically merged"
 runs:
   using: 'node16'
   main: 'dist/index.js'

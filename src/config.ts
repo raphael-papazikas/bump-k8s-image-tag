@@ -7,6 +7,7 @@ const image = core.getInput('image')
 const tag = core.getInput('tag')
 const PAT = core.getInput('PAT')
 const base = core.getInput('base') || 'main'
+const auto_merge = core.getBooleanInput('auto_merge')
 
 export type IConfig = {
   base: string
@@ -21,6 +22,9 @@ export type IConfig = {
   repoDirectory: string
   repoUrl: string
   tag: string
+  git_name?: string
+  git_email?: string
+  auto_merge?: boolean
 }
 
 export function getConfig(): IConfig {
@@ -46,6 +50,7 @@ export function getConfig(): IConfig {
     repo,
     repoDirectory,
     repoUrl: `https://bot:${PAT}@github.com/${owner}/${repo}.git`,
-    tag
+    tag,
+    auto_merge
   }
 }

@@ -42,6 +42,7 @@ const image = core.getInput('image');
 const tag = core.getInput('tag');
 const PAT = core.getInput('PAT');
 const base = core.getInput('base') || 'main';
+const auto_merge = core.getBooleanInput('auto_merge');
 function getConfig() {
     const basePath = path_1.default.resolve('./');
     const clonePath = path_1.default.resolve('./tmp');
@@ -61,7 +62,8 @@ function getConfig() {
         repo,
         repoDirectory,
         repoUrl: `https://bot:${PAT}@github.com/${owner}/${repo}.git`,
-        tag
+        tag,
+        auto_merge
     };
 }
 exports.getConfig = getConfig;
@@ -162,29 +164,57 @@ function run() {
         const config = (0, config_1.getConfig)();
         try {
             shelljs_1.default.config.fatal = true;
+            core.info('Configuring Git');
             shelljs_1.default.exec(`git config --global user.name "${config.owner}"`);
-            //shell.exec(`git config --global user.email "${config.owner}"`)
+            shelljs_1.default.exec(`git config --global user.email "robot@example.com"`);
             shelljs_1.default.mkdir('-p', config.clonePath);
             shelljs_1.default.cd(config.clonePath);
+            core.info('Cloning Repository');
             shelljs_1.default.exec(`git clone ${config.repoUrl}`);
             shelljs_1.default.cd(config.repoDirectory);
+            if (config.git_name) {
+                shelljs_1.default.exec(`git config user.name "${config.git_name}"`);
+            }
+            if (config.git_email) {
+                shelljs_1.default.exec(`git config user.email "${config.git_email}"`);
+            }
+            core.info('Creating Branch');
             shelljs_1.default.exec(`git checkout -B ${config.branch}`);
+            core.info('Bump Version');
             yield bumpVersions(config);
+            core.info('Committing Changes');
             shelljs_1.default.exec(`git add .`);
             shelljs_1.default.exec(`git commit -m "${config.commitMsg}"`);
             shelljs_1.default.exec(`git push -u origin ${config.branch}`);
-            yield github.getOctokit(config.PAT).rest.pulls.create({
+            core.info('Creating Pull Request');
+            const resp = yield github.getOctokit(config.PAT).rest.pulls.create({
                 owner: config.owner,
                 repo: config.repo,
                 title: config.commitMsg,
                 head: config.branch,
                 base: config.base
             });
+            core.info('Pull Request Created');
+            core.debug(JSON.stringify(resp.data));
+            if (String(config.auto_merge) === 'true') {
+                core.info('Auto Merge is configured');
+                const mergeResponse = yield github
+                    .getOctokit(config.PAT)
+                    .rest.pulls.merge({
+                    owner: config.owner,
+                    repo: config.repo,
+                    pull_number: resp.data.number,
+                    merge_method: 'squash'
+                });
+                core.debug('Merge Response');
+                core.debug(JSON.stringify(mergeResponse.data));
+            }
         }
         catch (e) {
             if (e instanceof Error)
                 core.setFailed(e.message);
         }
+        core.info('Cleanup');
         shelljs_1.default.rm('-rf', config.clonePath);
     });
 }
@@ -5485,6 +5515,12 @@ function setopts (self, pattern, options) {
     pattern = "**/" + pattern
   }
 
+  self.windowsPathsNoEscape = !!options.windowsPathsNoEscape ||
+    options.allowWindowsEscape === false
+  if (self.windowsPathsNoEscape) {
+    pattern = pattern.replace(/\\/g, '/')
+  }
+
   self.silent = !!options.silent
   self.pattern = pattern
   self.strict = options.strict !== false
@@ -5540,8 +5576,6 @@ function setopts (self, pattern, options) {
   // Note that they are not supported in Glob itself anyway.
   options.nonegate = true
   options.nocomment = true
-  // always treat \ in patterns as escapes, not path separators
-  options.allowWindowsEscape = true
 
   self.minimatch = new Minimatch(pattern, options)
   self.options = self.minimatch.options
